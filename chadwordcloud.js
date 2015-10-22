@@ -10,35 +10,29 @@ function chadwordcloud(options) {
 	 var lastY = 0;
     var dragSize = options.dragSize || 200;
     var dragToDestSelector = options.dragToDestSelector || ".word_drag";
-
-	$('.deletedResultWord').draggable({
-			 cancel: "a.ui-icon", // clicking an icon won't initiate dragging
-			  revert: "invalid", // when not dropped, the item will revert back to its initial position
-			  cursor: "move",
-			  start: function(event, ui) {
-					
-				},
-			  stop: function(event, ui) {
-				
-				}
-			});
-			
-	var svgOBJDrop =$('.activelightbox').find("svg:first").parent(); 
-		//console.log(svgOBJDrop);
-		svgOBJDrop.droppable({
-		  hoverClass: "word-cloud-state-hover",
-		  accept:".deletedResultWord",
-		  drop: function( event, ui ) {
-			  var elem = ui.draggable;
-			  var $apend = '<text class="wordcloud" id="word_53" text-anchor="middle" data-size="'+elem.attr("data-size")+'" data-word="'+elem.attr("data-text")+'">'+elem.attr("data-text")+'</text>';
-				svgOBJDrop.find("g").append($apend);
-				elem.remove();
-				trashBackWord(elem.attr("data-text"), elem.attr("data-size"));
-				refreshWordCloud();
-			}
-		});	
   
     var wordDraggerSelector = ".wordDragger";
+	
+	var $widgetRoot = $('#'+options.canvasid).parent().parent().parent();
+	var cloudRoot = d3.select('#'+options.canvasid+'')
+                .attr("width", 457)
+                .attr("height", 356)
+                .append("g")
+                .attr("transform", "translate(230,185)");
+
+  	var restoreWord = function(word, value) {
+  		console.log("restoring: " + word + ", " + value);
+  		cloudRoot.append("text")
+		.attr("transform", function(d) {
+			return "translate(" + [0, 0] + ")rotate(" + 0 + ")";
+		})
+  		.attr("data-word", word)
+  		.attr("data-value", value)
+  		.text(word);
+
+  		refreshWordCloud();
+  	}
+  	
 	
 	var drag = d3.behavior.drag()
 				.origin(function(d) { return d; })
@@ -50,6 +44,8 @@ function chadwordcloud(options) {
 							 dragDOM = $("body").append('<div class="wordDragger" style="display:none"><span>'+d.text+'</span></div>');
 						  }
 						  var dragger = $(wordDraggerSelector, dragDOM);
+						  dragger.find("span").html(d.text);
+						  
 						  lastX = d3.event.sourceEvent.pageX;
 						  lastY = d3.event.sourceEvent.pageY;
 						  dragDist = 0;
@@ -84,9 +80,9 @@ function chadwordcloud(options) {
 							.fadeIn(500);
 						}
 					 }
-				dragger.css({left: event.pageX, top: event.pageY});
+					dragger.css({left: event.pageX, top: event.pageY});
 				
-				//d3.select('#'+this.id).remove();
+					//d3.select('#'+this.id).remove();
 					
 					/* var x = d3.event.x;
 					  var y = d3.event.y;
@@ -98,9 +94,16 @@ function chadwordcloud(options) {
 					
 					d3.event.sourceEvent.stopPropagation();
 					var dest = $('.activelightbox').find('.word_drag');
+
+					var dragger = $(wordDraggerSelector, dragDOM);
+
+					dragger.fadeOut(500, function() {
+						  dragger.css({display:"none"}); 
+					});
+
 					if (checkDragDest(d3.event.sourceEvent)) {
 						//dest.find('.drag').find('span').remove();
-						var wordRoot = dest.append('<div class="deletedResultWord toBeDragged"><span data-size="'+d.size+'">'+d.text+'</span></div>').fadeIn(500);
+						var wordRoot = dest.append('<div class="deletedResultWord toBeDragged"><span data-value="'+d.value+'">'+d.text+'</span></div>').fadeIn(500);
 						wordRoot = wordRoot.find(".deletedResultWord");
 						wordRoot.removeClass("toBeDragged");
 						/*
@@ -134,34 +137,45 @@ function chadwordcloud(options) {
 					
 						/*var lightbox_id = $('.activelightbox').attr('id');
 						var canvas_get = lightbox_id.split('_');*/
-						var wordCouldSvgOBJ = $('.activelightbox').find("svg:first"); //$('#canvas_'+canvas_get[1]); 
+						//var wordCouldSvgOBJ = $('.activelightbox').find("svg:first"); //$('#canvas_'+canvas_get[1]); 
+						var wordCouldSvgOBJ = $widgetRoot.find(".box > .cell");
 
 						wordCouldSvgOBJ.droppable({
 						  accept: ".deletedResultWord",
 						  activeClass: "word-cloud-state-highlight",
 						  hoverClass: "word-cloud-state-hover",
 						  drop: function( event, ui ) {
-
-							  var elem = ui.draggable;
-							  var $apend = '<text class="wordcloud" id="word_53" text-anchor="middle" data-size="'+elem.attr("data-size")+'" data-word="'+elem.attr("data-text")+'">'+elem.attr("data-text")+'</text>';
-								svgOBJDrop.find("g").append($apend);
-								elem.remove();
-								trashBackWord(d.text, d.size);
-								refreshWordCloud();
-							}
-							
+							 transitioning = true;
+								console.log(ui);
+							 //ui.draggable.fadeOut(300).animate({'max-height':0, height:0}, 1300, function() {ui.draggable.remove()});
+							 ui.draggable.hide(500, function() {ui.draggable.remove()});
+							 var word = ui.draggable.find("span").html();
+							 var value = ui.draggable.find("span").attr("data-value");
+							 if (!value) {
+								value = ui.draggable.attr("data-value");
+							 }
+							 if (!value) {
+								value = ui.draggable.data("value");
+							 }
+							 if (!value) {
+								value = ui.draggable[0].attr("data-value");
+							 }
+							 if (!value) {
+								value = ui.draggable[0].data("value");
+							 }
+							 _.delay(_.bind(restoreWord, null, word, value), 50);
+							 // TODO: Call AJAX function to restore word to word cloud on server
+							  //trashBackImage(ui.draggable.attr("data-imageId"));
+						  }
 						});	
 					  
-						d3.select(this).remove();
-						dragDOM = null;
-						$('body').find('.wordDragger:last').remove();	
-						dest.removeClass("highlight");
-						trashWord(d.text, d.size);
-						refreshWordCloud();
-									
-				}else{
-					dest.removeClass("highlight");
-					}
+						d3.select(this)
+							//.transition(500)
+							//.style("opacity", 0)
+							.remove();
+						refreshWordCloud();		
+				}
+				dest.removeClass("highlight");
 			});
 			
 			
@@ -181,55 +195,16 @@ function chadwordcloud(options) {
 				}
 			}
 			
-	
-  var fill = d3.scale.category20();
-    var color = d3.scale.linear()
-            .domain([0,1,2,3])
-            .range(['#7cb742','#2d80a1','#1b4975','#001024']);
-
-    d3.layout.cloud().size([457, 356])
-            .words(options.list)
-            .padding(1)
-            .font("'Conv_News Gothic Condense',Sans-Serif")
-            .rotate(function() { return ~~(Math.random() * 2) * 90; })
-            .fontSize(function(d) { return Math.pow(d.size, 1.5); })
-            .on("end", draw)
-            .start();
-
+			
     function draw(words) {
-        d3.select('#'+options.canvasid+'')
-                .attr("width", 457)
-                .attr("height", 356)
-                .append("g")
-                .attr("transform", "translate(230,185)")
-                .selectAll("text")
-                .data(words)
-                .enter().append("text")
-                 .on("click", function(d, i) {
-					var thisText = d3.select(this);
-						 options.click([d.text,d.size]);
-					})
-				.on("mouseover",function(d,i){
-							var thisText = d3.select(this);
-							if(options.hover){
-									thisText.transition().duration(200).delay(300).style("font-size",d.size+20+"px");
-								
-								}
-					
-					})
-				.on("mouseout",function(d,i){
-					var thisText = d3.select(this);
-							if(options.hover){
-									thisText.transition().delay(100).style("font-size",d.size+"px");
-								}
-					
-					})
-				.call(drag)	
-				.attr("transform", "rotate(0)")
-				.transition()
-				.duration(1000)
-				.delay(500)
-				.attr("opacity",1)
+
+    		var wordCloud = cloudRoot
+                .selectAll("text", function(d) { return d.text; })
+                .data(words);
+                
+            var addedWords = wordCloud
+                .enter()
+                .append("text")
                 .style("font-size", function(d) { return d.size + "px"; })
                 .style("fill", function(d, i) { return color(i); })
                 .attr("transform", function(d) {
@@ -238,51 +213,167 @@ function chadwordcloud(options) {
                 .attr("class", "wordcloud")
                 .attr('id',function(d,i){ return 'word_'+i; })
                 .attr('text-anchor' ,'middle')
-                .attr('data-size' ,function(d,i){  return d.size; })
+                .attr('data-value' ,function(d,i){  return d.value; })
                 .attr('data-word' ,function(d,i){  return d.text; })
                 .text(function(d) { return d.text; })
-				//.ease("elastic")
-				;	
+				.style("opacity", 0)
+                .call(drag)
+                .on("click", function(d, i) {
+					var thisText = d3.select(this);
+						 options.click([d.text,d.value]);
+					});
+				;
+					// fade in the words
+			addedWords
+				.transition()
+				.duration(500)
+				.style("opacity", 1)
+				;
+			
+			// update all word's to their current positions and sizes
+			wordCloud
+                .attr('id',function(d,i){ return 'word_'+i; })
+				.transition()
+				.duration(500)
+                .attr("transform", function(d) {
+                    return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+                })
+                .style("font-size", function(d) { return d.size + "px"; })
+                .style("fill", function(d, i) { return color(i); })
+				.style("opacity", 1)
+				;
+				
+			wordCloud.exit().transition()
+				.duration(500)
+				.style("opacity", 0)
+			    .remove();
 		}
 	
-	function  refreshWordCloud(){
+	function  refreshWordCloud() {
 		
 		/*var lightbox_id = $('.activelightbox').attr('id');
 		var canvas_get = lightbox_id.split('_');*/
 		var tagarrpush = [];
-		var svgOBJ = $('.activelightbox').find("svg:first").attr("id"); //'canvas_'+canvas_get[1]; 
-		
-		$('#'+svgOBJ+' text').each(function(){
-				var text = {"text":''+$(this).attr('data-word')+'',"size":$(this).attr('data-size')};
+		//var svgOBJ = $('.activelightbox').find("svg:first").attr("id"); //'canvas_'+canvas_get[1]; 
+		var svgId = $widgetRoot.find("svg").attr("id");
+
+		$('#'+svgId+' text').each(function(){
+				var text = {"text":''+$(this).attr('data-word')+'',"value":$(this).attr('data-value')};
 				tagarrpush.push(text);
 			});
 			
-		//	console.log(tagarrpush);
-		var	json = $('.activelightbox').find(".cloud_data").val();
-		var data = tagarrpush;
-		var finalArray  = removeTrashWords(data,$('.activelightbox'));
-		var maxval= 0;
-		$.each(finalArray,function(key,value){
-				if(this.size>maxval){
-						maxval = this.size;
-					}
+		console.log(tagarrpush);
 			
+		var data = tagarrpush;
+		var maxval= 0;
+		$.each(data,function(key,value) {
+				if (this.value > maxval) {
+						maxval = this.value;
+					}
 			});
-			//console.log(data);
-			$('.activelightbox').find('.maxwordvalue').val(maxval);
-		//lightbox.prepend('<input type="hidden" class="maxwordvalue" value="'+maxval+'"/>');
-		d3.select("#"+svgOBJ).selectAll("*").remove();
-		var options = {
-				list:data,
-				canvasid:svgOBJ,
-				click: function(item) {
-					console.log(item);
-					getTextDetail(item,json);
-				 },
-						};
 
-		textCloudCreate(finalArray,svgOBJ,json,'');
+		//console.log(data);
+		$('.activelightbox').find('.maxwordvalue').val(maxval);
+		//lightbox.prepend('<input type="hidden" class="maxwordvalue" value="'+maxval+'"/>');
+		/*
+		d3.select("#"+svgOBJ).selectAll("*").remove();
+		
+		var options = {
+				list: data,
+				canvasid: svgOBJ,
+				click: function(word, value) {
+					console.log(word);
+					console.log(value);
+					getTextDetail(word, json);
+				 },
+			};
+		chadwordcloud(options);
+		*/
+			
+		wordCloud.words(data);
+		
+	    wordCloud.start();
+
 		
 		}
+
+	// Make trash words that are in the trash when the page loads work as draggable objects
+	var addWordTrashDragging = function() {
+		var trashImages = $widgetRoot.find(".deletedResultWord");
+		trashImages.each( function() {
+			var image = $(this);
+			image.draggable({
+			  cancel: "a.ui-icon", // clicking an icon won't initiate dragging
+			  revert: "invalid", // when not dropped, the item will revert back to its initial position
+			  containment: "document",
+			  helper: "clone",
+			  cursor: "move",
+			  start: function(event, ui) {
+				dragging = true;
+				// copy the data from the div to the span
+				ui.helper.find("span").attr("data-value", ui.helper.find("div").attr("data-value"));
+				ui.helper.find("span").attr("data-word", ui.helper.find("div").attr("data-word"));
+				ui.helper.addClass("draggingWord");
+				},
+			  stop: function(event, ui) {
+				ui.helper.removeClass("draggingWord");
+				dragging = false;
+				}
+			});
+		});
+		
+		// let the word cloud SVG be droppable, accepting the deleted words
+		var wordCouldSvgOBJ = $widgetRoot.find("svg");
+		
+    	wordCouldSvgOBJ.droppable({
+		  accept: ".deletedResultWord",
+		  activeClass: "word-cloud-state-highlight",
+		  hoverClass: "word-cloud-state-hover",
+		  drop: function( event, ui ) {
+			 transitioning = true;
+				console.log(ui);
+			 //ui.draggable.fadeOut(300).animate({'max-height':0, height:0}, 1300, function() {ui.draggable.remove()});
+			 ui.draggable.hide(500, function() {ui.draggable.remove()});
+			 var word = ui.draggable.find("span").html();
+			 var value = ui.draggable.find("span").attr("data-value");
+			 if (!value) {
+			    value = ui.draggable.find("div").attr("data-value");
+			 }
+			 if (!value) {
+				value = ui.draggable.attr("data-value");
+			 }
+			 if (!value) {
+				value = ui.draggable.data("value");
+			 }
+			 if (!value) {
+				value = ui.draggable[0].attr("data-value");
+			 }
+			 if (!value) {
+				value = ui.draggable[0].data("value");
+			 }
+			 _.delay(_.bind(restoreWord, null, word, value), 50);
+			 // TODO: Call AJAX function to restore word to word cloud on server
+			  //trashBackImage(ui.draggable.attr("data-imageId"));
+		  }	
+		  });
+	};
 	
+  	var fill = d3.scale.category20();
+  	
+    var color = d3.scale.linear()
+            .domain([0,1,2,3])
+            .range(['#7cb742','#2d80a1','#1b4975','#001024']);
+
+    var wordCloud = d3.layout.cloud().size([457, 356])
+            .words(options.list)
+            .padding(3)
+            .font("'Conv_News Gothic Condense',Sans-Serif")
+            .rotate(function() { return ~~(Math.random() * 2) * 90; })
+            .fontSize(function(d) { return Math.pow(d.value, 1.5); })
+            .on("end", draw);
+            
+    wordCloud.start();
+	
+	addWordTrashDragging();
+
 }//CHAD CLOUD CLOSED
